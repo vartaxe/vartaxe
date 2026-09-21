@@ -1,0 +1,39 @@
+title: Claudio Mendes
+description: Windows endpoint automation with PowerShell, ConfigMgr, and Active Directory.
+url: https://vartaxe.github.io
+baseurl: /vartaxe
+repository: vartaxe/vartaxe
+theme: jekyll-theme-cayman
+lang: en
+author: Claudio Mendes
+show_downloads: false
+plugins:
+  - jekyll-relative-links
+  - jekyll-optional-front-matter
+  - jekyll-seo-tag
+relative_links:
+  enabled: true
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+navigation:
+  - title: Profile
+    url: https://github.com/vartaxe
+  - title: AD groups
+    url: https://vartaxe.github.io/ConfigMgr-OSD-AddComputerToADGroup/
+  - title: OSD logs
+    url: https://vartaxe.github.io/ConfigMgr-OSD-CopyOSDLogToFileShare/
+  - title: Sponsor
+    url: https://github.com/sponsors/vartaxe
+buttons:
+  - title: Explore the projects
+    url: "#projects"
+  - title: Contact Claudio
+    url: mailto:vartaxe@outlook.com
+exclude:
+  - README.md
+  - assets/README.md
+  - Gemfile
+  - Gemfile.lock
