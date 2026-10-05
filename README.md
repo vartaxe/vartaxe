@@ -22,7 +22,7 @@ Most of the work here brings together Microsoft Configuration Manager and Active
 
 ## Projects
 
-Both tools are self-contained **Windows PowerShell 5.1** scripts under the **MIT
+The tools are self-contained **Windows PowerShell 5.1** scripts under the **MIT
 license**. Start with the deployment and compatibility guides, then validate the
 task-sequence step in your own environment.
 
@@ -45,6 +45,16 @@ and remote size checks**, and keeps the local archive if the upload fails.
 
 [Code][logs-repo] · [Documentation][logs-docs] · [Releases][logs-releases] · [Gist][logs-gist] · [Deployment][logs-deployment]
 
+### <img src="assets/disk-layout.svg" alt="" aria-hidden="true" width="24" height="24"> [Disk partition layout][disk-repo]
+
+[![Disk partition layout: CI status][disk-ci-badge]][disk-ci]
+
+Apply a disk layout in WinPE during a ConfigMgr task sequence. **It irreversibly
+cleans and repartitions the target disk**, so test it on disposable hardware first.
+
+[Code][disk-repo] · [Documentation][disk-docs] · [Releases][disk-releases]
+
+Part of the [ConfigMgr-OSD hub][hub], which links every OSD script project.
 Gists are standalone snapshots with MIT notices and checksums. The repositories
 and release packages remain the authoritative source for deployment guidance.
 
@@ -101,3 +111,9 @@ reporting, not a public issue.
 [logs-gist]: https://gist.github.com/vartaxe/cd41f830cddc7853f5189713421a601b
 [logs-deployment]: https://vartaxe.github.io/ConfigMgr-OSD-CopyOSDLogToFileShare/docs/deployment.html
 [logs-validation]: https://vartaxe.github.io/ConfigMgr-OSD-CopyOSDLogToFileShare/docs/validation.html
+[hub]: https://vartaxe.github.io/ConfigMgr-OSD/
+[disk-repo]: https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout
+[disk-docs]: https://vartaxe.github.io/ConfigMgr-OSD-DiskPartitionLayout/
+[disk-ci]: https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush
+[disk-ci-badge]: https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout/actions/workflows/ci.yml/badge.svg?branch=main&event=push
+[disk-releases]: https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout/releases

@@ -9,7 +9,7 @@ Most of the work here brings together Microsoft Configuration Manager and Active
 
 ## Projects
 
-Both projects are self-contained **Windows PowerShell 5.1** scripts under the
+The projects are self-contained **Windows PowerShell 5.1** scripts under the
 **MIT license**. Pick the task you need to automate:
 
 <div class="project-grid">
@@ -31,6 +31,15 @@ Both projects are self-contained **Windows PowerShell 5.1** scripts under the
     <p><a href="https://vartaxe.github.io/ConfigMgr-OSD-CopyOSDLogToFileShare/">Read the OSD log guide</a>
       &middot; <a href="https://github.com/vartaxe/ConfigMgr-OSD-CopyOSDLogToFileShare">Browse source</a>
       &middot; <a href="https://gist.github.com/vartaxe/cd41f830cddc7853f5189713421a601b">Standalone gist</a></p>
+  </section>
+  <section class="project-card" aria-labelledby="disk-layout-title">
+    <h3 id="disk-layout-title"><img src="assets/disk-layout.svg" alt="" aria-hidden="true" width="24" height="24"> Disk partition layout</h3>
+    <p>Apply a disk layout in WinPE during a task sequence. It irreversibly cleans and
+      repartitions the target disk, so test it on disposable hardware first.</p>
+    <p><strong>Runtime:</strong> WinPE in a ConfigMgr task sequence.</p>
+    <p><a href="https://vartaxe.github.io/ConfigMgr-OSD-DiskPartitionLayout/">Read the disk layout guide</a>
+      &middot; <a href="https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout">Browse source</a>
+      &middot; <a href="https://vartaxe.github.io/ConfigMgr-OSD/">ConfigMgr-OSD hub</a></p>
   </section>
 </div>
 
