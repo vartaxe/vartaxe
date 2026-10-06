@@ -29,6 +29,8 @@ navigation:
     url: https://vartaxe.github.io/ConfigMgr-OSD-DiskPartitionLayout/
   - title: Hub
     url: https://vartaxe.github.io/ConfigMgr-OSD/
+  - title: Forks
+    url: "#maintained-forks"
   - title: Sponsor
     url: https://github.com/sponsors/vartaxe
 buttons:

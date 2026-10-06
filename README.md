@@ -18,7 +18,7 @@ Most of the work here brings together Microsoft Configuration Manager and Active
   <img src="assets/windows.svg" alt="Windows" width="128" height="32">
 </p>
 
-[Projects](#projects) · [Website and guides][website] · [Development setup](docs/workstation.md) · [Contact](#contact)
+[Projects](#projects) · [Maintained forks](#maintained-forks) · [Website and guides][website] · [Development setup](docs/workstation.md) · [Contact](#contact)
 
 ## Projects
 
@@ -79,6 +79,21 @@ and release packages remain the authoritative source for deployment guidance.
 
 </details>
 
+## Maintained forks
+
+I also maintain focused changes in these upstream-derived endpoint-management
+projects:
+
+- [Modern Driver Management][mdm-fork] — fork of
+  [MSEndpointMgr/ModernDriverManagement][mdm-upstream].
+- [Modern BIOS Management][mbm-fork] — fork of
+  [MSEndpointMgr/ModernBIOSManagement][mbm-upstream].
+- [Driver Automation Tool][dat-fork] — fork of
+  [maurice-daly/DriverAutomationTool][dat-upstream].
+
+These remain forks rather than original projects. Review each fork's commit history,
+upstream documentation, and compatibility guidance before using it in production.
+
 ## Development
 
 [Set up a Windows workstation](docs/workstation.md) for Git, repository access,
@@ -120,3 +135,9 @@ contact method documented there. Do not report security issues in a public issue
 [disk-ci-badge]: https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout/actions/workflows/ci.yml/badge.svg?branch=main&event=push
 [disk-releases]: https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout/releases
 [disk-validation]: https://vartaxe.github.io/ConfigMgr-OSD-DiskPartitionLayout/docs/COMPATIBILITY-MATRIX.html
+[mdm-fork]: https://github.com/vartaxe/ModernDriverManagement
+[mdm-upstream]: https://github.com/MSEndpointMgr/ModernDriverManagement
+[mbm-fork]: https://github.com/vartaxe/ModernBIOSManagement
+[mbm-upstream]: https://github.com/MSEndpointMgr/ModernBIOSManagement
+[dat-fork]: https://github.com/vartaxe/DriverAutomationTool
+[dat-upstream]: https://github.com/maurice-daly/DriverAutomationTool
