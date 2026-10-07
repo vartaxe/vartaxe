@@ -14,7 +14,7 @@ PowerShell 5.1** for validation to match the deployment runtime.
 | Git for Windows | Clone, inspect changes, commit, and push |
 | GitHub CLI | Confirm the account, access repositories, and inspect CI/releases |
 | Windows PowerShell 5.1 | Parse, analyze, and test the deployment scripts |
-| Pester 5.7.1 | The pinned regression-test engine |
+| Pester 6.2.0 | The pinned regression-test engine for the standalone OSD repositories |
 | PSScriptAnalyzer 1.25.0 | The pinned static-analysis engine |
 | VS Code with Microsoft's PowerShell extension | Edit, navigate, and debug PowerShell |
 
@@ -85,9 +85,11 @@ git config --get user.email
 git status --short
 ```
 
-Follow `.gitattributes`: PowerShell files use CRLF and other text uses LF. If moving
-from a checkout with older rewritten history, preserve your local work and clone
-the current repository afresh.
+Follow the checked-out repository's `.gitattributes` rather than a global line-ending
+assumption. The standalone OSD repositories use CRLF for PowerShell and LF for other
+maintained text; the profile repository uses LF for all text. If moving from a
+checkout with older rewritten history, preserve your local work and clone the
+current repository afresh.
 
 ## Install the pinned validation modules
 
@@ -102,9 +104,9 @@ $PSVersionTable.PSEdition
 Expect version `5.1` and edition `Desktop`. In that 5.1 session:
 
 ```powershell
-Install-Module Pester -RequiredVersion '5.7.1' -Repository PSGallery -Scope CurrentUser -Force
+Install-Module Pester -RequiredVersion '6.2.0' -Repository PSGallery -Scope CurrentUser -Force
 Install-Module PSScriptAnalyzer -RequiredVersion '1.25.0' -Repository PSGallery -Scope CurrentUser -Force
-Import-Module Pester -RequiredVersion '5.7.1' -Force
+Import-Module Pester -RequiredVersion '6.2.0' -Force
 Import-Module PSScriptAnalyzer -RequiredVersion '1.25.0' -Force
 ```
 
@@ -114,7 +116,7 @@ access before retrying.
 
 ## Validate before editing or publishing
 
-From any script repository's root, run:
+From a standalone OSD repository that provides `build\Invoke-Validation.ps1`, run:
 
 ```powershell
 powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File .\build\Invoke-Validation.ps1
@@ -123,6 +125,11 @@ powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File .\build\
 The execution-policy option applies to this process and remains subject to
 organizational Group Policy. Use the validator for desktop testing; run deployment
 entry points only inside a ConfigMgr task sequence.
+
+The maintained forks do not share that validator. Run the regression scripts and
+commands documented by each fork and mirror its pinned GitHub Actions workflow
+locally where practical; do not infer one repository's validation contract from
+another.
 
 In VS Code, select Windows PowerShell 5.1 through **PowerShell: Show Session Menu**.
 Where a repository provides a **Validate with Windows PowerShell 5.1** task, it

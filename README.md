@@ -1,9 +1,9 @@
 <h1>
   <picture>
-    <source media="(prefers-color-scheme: dark) and (max-width: 600px)" srcset="assets/profile-dark-compact.svg" width="720">
-    <source media="(max-width: 600px)" srcset="assets/profile-light-compact.svg" width="720">
-    <source media="(prefers-color-scheme: dark)" srcset="assets/profile-dark.svg" width="1280">
-    <img src="assets/profile-light.svg" alt="Claudio Mendes — @vartaxe. Windows endpoint automation." width="1280">
+    <source media="(prefers-color-scheme: dark) and (max-width: 600px)" srcset="assets/profile-dark-compact.svg" width="720" height="260">
+    <source media="(max-width: 600px)" srcset="assets/profile-light-compact.svg" width="720" height="260">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/profile-dark.svg" width="1280" height="320">
+    <img src="assets/profile-light.svg" alt="Claudio Mendes — @vartaxe. Windows endpoint automation." width="1280" height="320">
   </picture>
 </h1>
 
