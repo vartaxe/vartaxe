@@ -1,3 +1,8 @@
+---
+layout: null
+title: Redirecting to the canonical vartaxe hub
+description: The canonical Windows endpoint automation hub for vartaxe.
+---
 <!doctype html>
 <html lang="en">
   <head>
