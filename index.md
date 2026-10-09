@@ -17,6 +17,9 @@ description: The canonical Windows endpoint automation hub for vartaxe.
       <h1>Redirecting to the canonical vartaxe hub</h1>
       <p>The profile and project hub now live at
         <a href="https://vartaxe.github.io/">https://vartaxe.github.io/</a>.</p>
+      <p>The canonical hub includes the maintained fork information for
+        <span translate="no">DriverAutomationTool</span> and the former
+        maintained fork.</p>
     </main>
   </body>
 </html>
