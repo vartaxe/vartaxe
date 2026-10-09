@@ -16,8 +16,7 @@
       <nav class="project-navigation" aria-label="Project navigation">
         <a href="{{ '/' | relative_url }}"{% if page.url == '/' or page.url == '/index.html' %} aria-current="page"{% endif %}>Home</a>
         {% for item in site.navigation %}
-        {% assign prefix = item.url | slice: 0, 1 %}
-        <a href="{% if prefix == '/' %}{{ item.url | relative_url }}{% elsif prefix == '#' %}{{ '/' | relative_url }}{{ item.url }}{% else %}{{ item.url }}{% endif %}">{{ item.title | escape }}</a>
+        <a href="{% include project-url.html url=item.url %}">{{ item.title | escape }}</a>
         {% endfor %}
       </nav>
       {% if page.url == '/' or page.url == '/index.html' %}
@@ -28,8 +27,7 @@
       <p class="project-tagline">{{ site.description | escape }}</p>
       <div class="project-actions">
         {% for item in site.buttons %}
-        {% assign prefix = item.url | slice: 0, 1 %}
-        <a class="btn" href="{% if prefix == '/' %}{{ item.url | relative_url }}{% elsif prefix == '#' %}{{ '/' | relative_url }}{{ item.url }}{% else %}{{ item.url }}{% endif %}">{{ item.title | escape }}</a>
+        <a class="btn" href="{% include project-url.html url=item.url %}">{{ item.title | escape }}</a>
         {% endfor %}
       </div>
     </header>
