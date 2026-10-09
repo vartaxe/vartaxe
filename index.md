@@ -39,7 +39,7 @@ The projects are self-contained **Windows PowerShell 5.1** scripts under the
     <p><strong>Runtime:</strong> WinPE in a ConfigMgr task sequence.</p>
     <p><a href="https://vartaxe.github.io/ConfigMgr-OSD-DiskPartitionLayout/">Read the disk layout guide</a>
       &middot; <a href="https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout">Browse source</a>
-      &middot; <a href="https://vartaxe.github.io/ConfigMgr-OSD/">ConfigMgr-OSD hub</a></p>
+      &middot; <a href="https://vartaxe.github.io/">ConfigMgr-OSD hub</a></p>
   </section>
 </div>
 
