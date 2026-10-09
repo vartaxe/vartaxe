@@ -126,7 +126,7 @@ contact method documented there. Do not report security issues in a public issue
 [logs-gist]: https://gist.github.com/vartaxe/cd41f830cddc7853f5189713421a601b
 [logs-deployment]: https://vartaxe.github.io/ConfigMgr-OSD-CopyOSDLogToFileShare/docs/deployment.html
 [logs-validation]: https://vartaxe.github.io/ConfigMgr-OSD-CopyOSDLogToFileShare/docs/validation.html
-[hub]: https://vartaxe.github.io/ConfigMgr-OSD/
+[hub]: https://vartaxe.github.io/
 [disk-repo]: https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout
 [disk-docs]: https://vartaxe.github.io/ConfigMgr-OSD-DiskPartitionLayout/
 [disk-ci]: https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush

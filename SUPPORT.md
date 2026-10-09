@@ -12,7 +12,7 @@ Use the affected tool's documentation and support path:
 - [Add Computer to AD Group](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup)
 - [Copy OSD Logs to File Share](https://github.com/vartaxe/ConfigMgr-OSD-CopyOSDLogToFileShare)
 - [Disk Partition Layout](https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout)
-- [ConfigMgr-OSD project hub](https://vartaxe.github.io/ConfigMgr-OSD/)
+- [ConfigMgr-OSD project hub](https://vartaxe.github.io/)
 
 ## Maintained fork
 
