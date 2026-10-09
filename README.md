@@ -18,7 +18,7 @@ Most of the work here brings together Microsoft Configuration Manager and Active
   <img src="assets/windows.svg" alt="Windows" width="128" height="32">
 </p>
 
-[Projects](#projects) · [Maintained forks](#maintained-forks) · [Website and guides][website] · [Development setup](docs/workstation.md) · [Contact](#contact)
+[Projects](#projects) · [Maintained forks](#maintained-forks) · [Canonical hub][website] · [Development setup](docs/workstation.md) · [Contact](#contact)
 
 ## Projects
 
@@ -109,7 +109,7 @@ Use private vulnerability reporting when it is available; otherwise use the priv
 contact method documented there. Do not report security issues in a public issue.
 
 [sponsor]: https://github.com/sponsors/vartaxe
-[website]: https://vartaxe.github.io/vartaxe/
+[website]: https://vartaxe.github.io/
 [ad-repo]: https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup
 [ad-docs]: https://vartaxe.github.io/ConfigMgr-OSD-AddComputerToADGroup/
 [ad-ci]: https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush
