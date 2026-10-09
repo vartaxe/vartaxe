@@ -63,17 +63,18 @@ gh repo clone vartaxe/ConfigMgr-OSD-CopyOSDLogToFileShare
 gh repo clone vartaxe/ConfigMgr-OSD-DiskPartitionLayout
 ```
 
-For maintenance work on the upstream-derived projects, clone the relevant fork:
+For endpoint-management maintenance, clone the consolidated fork:
 
 ```powershell
-gh repo clone vartaxe/ModernDriverManagement
-gh repo clone vartaxe/ModernBIOSManagement
 gh repo clone vartaxe/DriverAutomationTool
 ```
 
-Before changing a fork, inspect its configured upstream and compare the fork branch
-with the upstream default branch. Preserve upstream attribution and follow the
-project-specific build, compatibility, and release instructions.
+The Modern Driver Management and Modern BIOS Management repositories are archived
+compatibility sources. Their maintained scripts, tests, and attribution now live
+in Driver Automation Tool. Before changing the fork, inspect its configured upstream
+and compare the fork branch with the upstream default branch. Preserve upstream
+attribution and follow the project-specific build, compatibility, and release
+instructions.
 
 Inside each repository, set your own commit identity and review the configuration:
 

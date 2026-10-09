@@ -53,37 +53,24 @@ and release packages remain the authoritative source for deployment guidance.
     deployment, compatibility, and validation guides.</p>
 </aside>
 
-## Maintained forks
+## Maintained fork
 
-These upstream-derived repositories contain focused endpoint-management maintenance.
-They remain forks, so review the fork history and upstream guidance before deployment.
+Endpoint-management maintenance is consolidated in Driver Automation Tool. It
+remains a fork, so review its history and upstream guidance before deployment.
 
 <div class="project-grid">
-  <section class="project-card" aria-labelledby="modern-driver-title">
-    <h3 id="modern-driver-title">Modern Driver Management</h3>
-    <p>ConfigMgr driver-management automation maintained as a fork of the
-      MSEndpointMgr project.</p>
-    <p><a href="https://github.com/vartaxe/ModernDriverManagement">Browse the maintained fork</a>
-      &middot; <a href="https://github.com/MSEndpointMgr/ModernDriverManagement">View upstream</a>
-      &middot; <a href="https://www.msendpointmgr.com/modern-driver-management">Read upstream guidance</a></p>
-  </section>
-  <section class="project-card" aria-labelledby="modern-bios-title">
-    <h3 id="modern-bios-title">Modern BIOS Management</h3>
-    <p>ConfigMgr BIOS-management automation maintained as a fork of the
-      MSEndpointMgr project.</p>
-    <p><a href="https://github.com/vartaxe/ModernBIOSManagement">Browse the maintained fork</a>
-      &middot; <a href="https://github.com/MSEndpointMgr/ModernBIOSManagement">View upstream</a>
-      &middot; <a href="https://www.msendpointmgr.com/modern-bios-management">Read upstream guidance</a></p>
-  </section>
   <section class="project-card" aria-labelledby="driver-automation-title">
     <h3 id="driver-automation-title">Driver Automation Tool</h3>
-    <p>Driver and BIOS package automation maintained as a fork of Maurice Daly's
-      community project.</p>
+    <p>Driver and BIOS package automation, including the consolidated ConfigMgr
+      deployment scripts, maintained as a fork of Maurice Daly's community project.</p>
     <p><a href="https://github.com/vartaxe/DriverAutomationTool">Browse the maintained fork</a>
       &middot; <a href="https://github.com/maurice-daly/DriverAutomationTool">View upstream</a>
       &middot; <a href="https://www.driverautomationtool.com">Visit the project website</a></p>
   </section>
 </div>
+
+The former Modern Driver Management and Modern BIOS Management forks are retained
+as archived compatibility sources. New maintenance work belongs in DAT.
 
 ## A consistent approach
 

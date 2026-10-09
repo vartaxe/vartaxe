@@ -49,5 +49,5 @@ jobs:
         run: |
           test -s _site/index.html
           test -s _site/docs/workstation.html
-          grep -F "Maintained forks" _site/index.html
-          grep -F "ModernDriverManagement" _site/index.html
+          grep -F "Maintained fork" _site/index.html
+          grep -F "DriverAutomationTool" _site/index.html
