@@ -4,5 +4,5 @@ contact_links:
     url: https://github.com/vartaxe/vartaxe/blob/main/SECURITY.md
     about: Report vulnerabilities through the private contact documented in the security policy.
   - name: ConfigMgr OSD support
-    url: https://vartaxe.github.io/ConfigMgr-OSD/
+    url: https://vartaxe.github.io/
     about: Choose the affected OSD tool and follow its deployment, support, and security guidance.

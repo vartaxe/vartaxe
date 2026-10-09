@@ -12,14 +12,15 @@ Use the affected tool's documentation and support path:
 - [Add Computer to AD Group](https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup)
 - [Copy OSD Logs to File Share](https://github.com/vartaxe/ConfigMgr-OSD-CopyOSDLogToFileShare)
 - [Disk Partition Layout](https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout)
-- [ConfigMgr-OSD project hub](https://vartaxe.github.io/ConfigMgr-OSD/)
+- [ConfigMgr-OSD project hub](https://vartaxe.github.io/)
 
-## Maintained forks
+## Maintained fork
 
-Review the fork history and upstream documentation before opening an issue:
+Open endpoint-management maintenance work in:
 
-- [Modern Driver Management fork](https://github.com/vartaxe/ModernDriverManagement)
-- [Modern BIOS Management fork](https://github.com/vartaxe/ModernBIOSManagement)
 - [Driver Automation Tool fork](https://github.com/vartaxe/DriverAutomationTool)
+
+The Modern Driver Management and Modern BIOS Management forks are archived
+compatibility sources and no longer accept maintenance work.
 
 Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).

@@ -1,5 +1,5 @@
 title: Claudio Mendes
-description: Windows endpoint automation with PowerShell, ConfigMgr, and Active Directory.
+description: Redirect to the canonical Windows endpoint automation hub.
 url: https://vartaxe.github.io
 baseurl: /vartaxe
 repository: vartaxe/vartaxe
@@ -28,7 +28,7 @@ navigation:
   - title: Disk layout
     url: https://vartaxe.github.io/ConfigMgr-OSD-DiskPartitionLayout/
   - title: Hub
-    url: https://vartaxe.github.io/ConfigMgr-OSD/
+    url: https://vartaxe.github.io/
   - title: Forks
     url: "#maintained-forks"
   - title: Sponsor

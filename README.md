@@ -18,7 +18,7 @@ Most of the work here brings together Microsoft Configuration Manager and Active
   <img src="assets/windows.svg" alt="Windows" width="128" height="32">
 </p>
 
-[Projects](#projects) · [Maintained forks](#maintained-forks) · [Website and guides][website] · [Development setup](docs/workstation.md) · [Contact](#contact)
+[Projects](#projects) · [Maintained forks](#maintained-forks) · [Canonical hub][website] · [Development setup](docs/workstation.md) · [Contact](#contact)
 
 ## Projects
 
@@ -79,20 +79,18 @@ and release packages remain the authoritative source for deployment guidance.
 
 </details>
 
-## Maintained forks
+## Maintained fork
 
-I also maintain focused changes in these upstream-derived endpoint-management
-projects:
+Endpoint-management maintenance is consolidated in:
 
-- [Modern Driver Management][mdm-fork] — fork of
-  [MSEndpointMgr/ModernDriverManagement][mdm-upstream].
-- [Modern BIOS Management][mbm-fork] — fork of
-  [MSEndpointMgr/ModernBIOSManagement][mbm-upstream].
 - [Driver Automation Tool][dat-fork] — fork of
-  [maurice-daly/DriverAutomationTool][dat-upstream].
+  [maurice-daly/DriverAutomationTool][dat-upstream], including the maintained
+  ConfigMgr driver/BIOS package selectors and Dell, HP, Lenovo, and Microsoft
+  BIOS apply scripts.
 
-These remain forks rather than original projects. Review each fork's commit history,
-upstream documentation, and compatibility guidance before using it in production.
+The former Modern Driver Management and Modern BIOS Management forks are archived
+compatibility sources; future maintenance belongs in DAT. Review the fork history,
+upstream documentation, and compatibility guidance before production use.
 
 ## Development
 
@@ -111,7 +109,7 @@ Use private vulnerability reporting when it is available; otherwise use the priv
 contact method documented there. Do not report security issues in a public issue.
 
 [sponsor]: https://github.com/sponsors/vartaxe
-[website]: https://vartaxe.github.io/vartaxe/
+[website]: https://vartaxe.github.io/
 [ad-repo]: https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup
 [ad-docs]: https://vartaxe.github.io/ConfigMgr-OSD-AddComputerToADGroup/
 [ad-ci]: https://github.com/vartaxe/ConfigMgr-OSD-AddComputerToADGroup/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush
@@ -128,16 +126,12 @@ contact method documented there. Do not report security issues in a public issue
 [logs-gist]: https://gist.github.com/vartaxe/cd41f830cddc7853f5189713421a601b
 [logs-deployment]: https://vartaxe.github.io/ConfigMgr-OSD-CopyOSDLogToFileShare/docs/deployment.html
 [logs-validation]: https://vartaxe.github.io/ConfigMgr-OSD-CopyOSDLogToFileShare/docs/validation.html
-[hub]: https://vartaxe.github.io/ConfigMgr-OSD/
+[hub]: https://vartaxe.github.io/
 [disk-repo]: https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout
 [disk-docs]: https://vartaxe.github.io/ConfigMgr-OSD-DiskPartitionLayout/
 [disk-ci]: https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush
 [disk-ci-badge]: https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout/actions/workflows/ci.yml/badge.svg?branch=main&event=push
 [disk-releases]: https://github.com/vartaxe/ConfigMgr-OSD-DiskPartitionLayout/releases
 [disk-validation]: https://vartaxe.github.io/ConfigMgr-OSD-DiskPartitionLayout/docs/COMPATIBILITY-MATRIX.html
-[mdm-fork]: https://github.com/vartaxe/ModernDriverManagement
-[mdm-upstream]: https://github.com/MSEndpointMgr/ModernDriverManagement
-[mbm-fork]: https://github.com/vartaxe/ModernBIOSManagement
-[mbm-upstream]: https://github.com/MSEndpointMgr/ModernBIOSManagement
 [dat-fork]: https://github.com/vartaxe/DriverAutomationTool
 [dat-upstream]: https://github.com/maurice-daly/DriverAutomationTool
