@@ -1,0 +1,8 @@
+{%- assign prefix = include.url | slice: 0, 1 -%}
+{%- if prefix == '/' -%}
+  {{- include.url | relative_url -}}
+{%- elsif prefix == '#' -%}
+  {{- '/' | relative_url -}}{{- include.url -}}
+{%- else -%}
+  {{- include.url -}}
+{%- endif -%}

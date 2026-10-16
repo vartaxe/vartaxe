@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="260" viewBox="0 0 720 260" role="img" aria-labelledby="title description">
+  <title id="title">Claudio Mendes</title>
+  <desc id="description">PowerShell tools for Windows endpoint deployment by @vartaxe.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#155799"/>
+      <stop offset="1" stop-color="#117865"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="260" rx="18" fill="url(#background)"/>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <text x="40" y="108" fill="#ffffff" font-size="60" font-weight="700">Claudio Mendes</text>
+    <text x="42" y="160" fill="#ffffff" font-size="30">Windows endpoint automation</text>
+    <text x="42" y="210" fill="#e1f5f0" font-size="26">@vartaxe</text>
+  </g>
+  <g fill="none" stroke="#bfdbfe" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="596" y="57" width="80" height="62" rx="7" fill="#0d2e4c"/>
+    <path d="m611 77 13 11-13 11m24 0h18"/>
+  </g>
+</svg>
