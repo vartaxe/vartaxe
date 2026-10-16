@@ -18,7 +18,7 @@ Most of the work here brings together Microsoft Configuration Manager and Active
   <img src="assets/windows.svg" alt="Windows" width="128" height="32">
 </p>
 
-[Projects](#projects) · [Maintained forks](#maintained-forks) · [Canonical hub][website] · [Development setup](docs/workstation.md) · [Contact](#contact)
+[Projects](#projects) · [Maintained fork](#maintained-fork) · [Canonical hub][website] · [Development setup](docs/workstation.md) · [Contact](#contact)
 
 ## Projects
 
@@ -41,7 +41,7 @@ in CMTrace format.
 [![Copy OSD logs to a file share: CI status][logs-ci-badge]][logs-ci]
 
 Collect and archive OSD logs, then upload them to an SMB share. Includes **upload retries
-and remote size checks**, and keeps the local archive if the upload fails.
+and remote byte-size checks**, and keeps the local archive if the upload fails.
 
 [Code][logs-repo] · [Documentation][logs-docs] · [Releases][logs-releases] · [Gist][logs-gist] · [Deployment][logs-deployment]
 
@@ -60,7 +60,7 @@ and release packages remain the authoritative source for deployment guidance.
 
 > [!NOTE]
 > Automated checks cover syntax, static analysis, and mocked scenarios. Live-environment
-> testing has not been performed for this release. Use the [AD group validation guide][ad-validation]
+> testing has not been performed for these releases. Use the [AD group validation guide][ad-validation]
 > and [OSD log validation guide][logs-validation], plus the [disk-layout compatibility
 > matrix][disk-validation], to plan your rollout.
 
