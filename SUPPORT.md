@@ -20,7 +20,8 @@ Open endpoint-management maintenance work in:
 
 - [Driver Automation Tool fork](https://github.com/vartaxe/DriverAutomationTool)
 
-The Modern Driver Management and Modern BIOS Management forks are archived
-compatibility sources and no longer accept maintenance work.
+The Driver Automation Tool repository is the home for endpoint-management
+fork maintenance. Review its upstream attribution, license, and support guidance
+before using it.
 
 Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
