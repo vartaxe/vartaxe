@@ -69,12 +69,11 @@ For endpoint-management maintenance, clone the consolidated fork:
 gh repo clone vartaxe/DriverAutomationTool
 ```
 
-The Modern Driver Management and Modern BIOS Management repositories are archived
-compatibility sources. Their maintained scripts, tests, and attribution now live
-in Driver Automation Tool. Before changing the fork, inspect its configured upstream
-and compare the fork branch with the upstream default branch. Preserve upstream
-attribution and follow the project-specific build, compatibility, and release
-instructions.
+The consolidated driver and BIOS deployment scripts, tests, and attribution live
+in Driver Automation Tool. Before changing the fork, inspect its configured
+upstream and compare the fork branch with the upstream default branch. Preserve
+upstream attribution and follow the project-specific build, compatibility, and
+release instructions.
 
 Inside each repository, set your own commit identity and review the configuration:
 
