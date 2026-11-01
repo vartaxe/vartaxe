@@ -488,6 +488,28 @@ continues inside this code span`
                 set(DOCS_DRIFT.env_names_from_code(repo, ["main.sh"])),
                 {"PORT", "TEMP_VALUE", "PIPE_VALUE"})
 
+    def test_shell_multiline_single_quotes_and_quoted_heredocs_are_ignored(self):
+        source = (
+            "cat <<'EOF'\n"
+            "$HEREDOC_SECRET\n"
+            "EOF\n"
+            "VALUE='first line\n"
+            "$QUOTED_SECRET'\n"
+            'echo "$ACTUAL_READ"\n')
+
+        self.assertEqual(
+            DOCS_DRIFT.shell_env_reads(source), [("ACTUAL_READ", 6)])
+
+    def test_function_local_assignments_do_not_suppress_top_level_reads(self):
+        source = (
+            "configure() {\n"
+            "  local TOKEN=hidden\n"
+            '  echo "$TOKEN"\n'
+            "}\n"
+            'echo "$TOKEN"\n')
+
+        self.assertEqual(DOCS_DRIFT.shell_env_reads(source), [("TOKEN", 5)])
+
     def test_python_env_scanner_ignores_comments_strings_and_writes(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = Path(temp_dir)
@@ -628,6 +650,23 @@ continues inside this code span`
                 "include generated-rules.mk\n", encoding="utf-8")
             result = DOCS_DRIFT.build(repo, ["Makefile", "README.md"])
 
+            self.assertNotIn(
+                "missing-make-target",
+                {finding["kind"] for finding in result["findings"]})
+
+    def test_make_variable_expanded_target_header_suppresses_negative_checks(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            (repo / "Makefile").write_text(
+                "TARGETS = build generated\n"
+                "$(TARGETS):\n\t@echo $@\n", encoding="utf-8")
+            (repo / "README.md").write_text(
+                "```sh\nmake generated\nmake unknown\n```\n", encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, ["Makefile", "README.md"])
+
+            self.assertFalse(
+                DOCS_DRIFT.makefile_inventory_complete(repo, "Makefile"))
             self.assertNotIn(
                 "missing-make-target",
                 {finding["kind"] for finding in result["findings"]})
@@ -1855,6 +1894,28 @@ npm run build
             self.assertEqual(len(missing_scripts), 1)
             self.assertIn("build", missing_scripts[0]["detail"])
             self.assertEqual(missing_scripts[0]["line"], 2)
+
+    def test_non_shell_source_fences_are_not_validated_as_shell_commands(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            (repo / "Makefile").write_text("known:\n", encoding="utf-8")
+            (repo / "README.md").write_text(
+                "```python\n"
+                "make python_example\n"
+                "```\n"
+                "```sh\n"
+                "make shell_example\n"
+                "```\n", encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, ["Makefile", "README.md"])
+            missing = [
+                finding for finding in result["findings"]
+                if finding["kind"] == "missing-make-target"
+            ]
+
+            self.assertEqual(len(missing), 1)
+            self.assertIn("shell_example", missing[0]["detail"])
+            self.assertEqual(missing[0]["line"], 5)
 
 
 if __name__ == "__main__":

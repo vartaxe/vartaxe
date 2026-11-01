@@ -65,6 +65,12 @@ CODE_EXTS = {
 ENV_CODE_EXTS = CODE_EXTS | {".ps1", ".psm1", ".psd1"}
 
 FENCE = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})")
+NON_SHELL_FENCE_LANGUAGES = {
+    "c", "c++", "c#", "csharp", "css", "go", "html", "java", "javascript", "js",
+    "json", "jsx", "kotlin", "markdown", "md", "php", "python", "python3", "py",
+    "ruby", "rust", "sql", "swift", "toml", "ts", "tsx", "typescript",
+    "xml", "yaml", "yml",
+}
 # Commands worth checking. Anything else in a fenced block is left alone.
 CMD_NPM_MANAGER = re.compile(r"(?:npm|pnpm|yarn|bun)(?:\.cmd|\.exe)?", re.I)
 NPM_SCRIPT = re.compile(r"[A-Za-z0-9:_.-]+")
@@ -303,17 +309,26 @@ def fenced_blocks(text: str) -> list[tuple[int, str]]:
 
 def fenced_block_groups(text: str) -> list[list[tuple[int, str]]]:
     """Return fenced code lines grouped so shell state does not leak between blocks."""
-    groups: list[list[tuple[int, str]]] = []
+    return [lines for _, lines in fenced_code_block_groups(text)]
+
+
+def fenced_code_block_groups(
+        text: str) -> list[tuple[str, list[tuple[int, str]]]]:
+    """Return each fenced block's language and lines."""
+    groups: list[tuple[str, list[tuple[int, str]]]] = []
     current: list[tuple[int, str]] | None = None
     fence_char = ""
     fence_length = 0
     fence_depth = 0
+    language = ""
     for i, line in enumerate(text.splitlines(), start=1):
         depth, content = markdown_blockquote_content(line)
         marker = FENCE.match(content)
         if marker and current is None:
             current = []
-            groups.append(current)
+            info = content[marker.end():].strip()
+            language = info.split(None, 1)[0].casefold() if info else ""
+            groups.append((language, current))
             fence_char = marker.group(1)[0]
             fence_length = len(marker.group(1))
             fence_depth = depth
@@ -323,6 +338,7 @@ def fenced_block_groups(text: str) -> list[list[tuple[int, str]]]:
             fence_char = ""
             fence_length = 0
             fence_depth = 0
+            language = ""
         elif current is not None:
             current.append((i, markdown_blockquote_content(line, fence_depth)[1]))
     return groups
@@ -396,7 +412,36 @@ def makefile_inventory_complete(repo: Path, rel: str) -> bool:
     text = read(repo / rel)
     has_pattern_rule = re.search(r"^\s*[^:\n]*%[^:\n]*:", text, re.M)
     has_inclusion = re.search(r"^\s*(?:-?include|sinclude)\s+", text, re.M)
-    return not (has_pattern_rule or has_inclusion)
+    has_expanded_target = any(
+        make_rule_has_expanded_target(line) for line in text.splitlines())
+    return not (has_pattern_rule or has_inclusion or has_expanded_target)
+
+
+def make_rule_has_expanded_target(line: str) -> bool:
+    """Whether a Make rule's target list contains an unresolved variable."""
+    if line.startswith("\t"):
+        return False
+    index = 0
+    variable_depth = 0
+    while index < len(line):
+        if line[index] == "\\":
+            index += 2
+            continue
+        if line[index] == "#" and variable_depth == 0:
+            break
+        if line[index] == "$" and index + 1 < len(line):
+            if line[index + 1] in "({":
+                variable_depth += 1
+                index += 2
+                continue
+        elif line[index] in ")}" and variable_depth:
+            variable_depth -= 1
+        elif line[index] == ":" and variable_depth == 0:
+            if line.startswith(":=", index) or line.startswith("::=", index):
+                return False
+            return "$" in line[:index]
+        index += 1
+    return False
 
 
 def make_target_has_builtin_rule(repo: Path, cwd: Path, target: str,
@@ -1507,12 +1552,92 @@ def powershell_env_reads(text: str) -> list[tuple[str, int]]:
     return found
 
 
+def shell_line_without_single_quotes(
+        line: str, in_single_quote: bool, in_double_quote: bool
+        ) -> tuple[str, bool, bool, list[tuple[str, bool]]]:
+    """Mask single-quoted text and collect quoted here-document delimiters."""
+    masked = list(line)
+    heredocs = []
+    index = 0
+    while index < len(line):
+        char = line[index]
+        if in_single_quote:
+            masked[index] = " "
+            if char == "'":
+                in_single_quote = False
+            index += 1
+            continue
+        if in_double_quote:
+            if char == "\\":
+                index += 2
+                continue
+            if char == '"':
+                in_double_quote = False
+            index += 1
+            continue
+        if char == "\\":
+            index += 2
+            continue
+        if char == "#" and (index == 0 or line[index - 1].isspace()):
+            break
+        if line.startswith("<<", index):
+            delimiter_start = index + 2
+            strip_tabs = delimiter_start < len(line) and line[delimiter_start] == "-"
+            if strip_tabs:
+                delimiter_start += 1
+            while delimiter_start < len(line) and line[delimiter_start] in " \t":
+                delimiter_start += 1
+            if (delimiter_start < len(line)
+                    and line[delimiter_start] in {"'", '"'}):
+                quote = line[delimiter_start]
+                delimiter_end = line.find(quote, delimiter_start + 1)
+                if delimiter_end >= 0:
+                    heredocs.append(
+                        (line[delimiter_start + 1:delimiter_end], strip_tabs))
+                    for position in range(delimiter_start, delimiter_end + 1):
+                        masked[position] = " "
+                    index = delimiter_end + 1
+                    continue
+        if char == "'":
+            in_single_quote = True
+            masked[index] = " "
+        elif char == '"':
+            in_double_quote = True
+        index += 1
+    return "".join(masked), in_single_quote, in_double_quote, heredocs
+
+
 def shell_env_reads(text: str) -> list[tuple[str, int]]:
-    """Return shell parameter expansions outside comments and single-quoted text."""
+    """Return shell parameter expansions outside comments and quoted literals."""
     found = []
     local_names: set[str] = set()
+    function_local_names: set[str] = set()
+    function_depth = 0
+    in_function = False
+    in_single_quote = False
+    in_double_quote = False
+    heredoc_queue: list[tuple[str, bool]] = []
     for line_number, line in enumerate(text.splitlines(), start=1):
-        command = strip_shell_comment(line)
+        if heredoc_queue:
+            delimiter, strip_tabs = heredoc_queue[0]
+            body_line = line.lstrip("\t") if strip_tabs else line
+            if body_line == delimiter:
+                heredoc_queue.pop(0)
+            continue
+
+        command, in_single_quote, in_double_quote, heredocs = (
+            shell_line_without_single_quotes(
+                line, in_single_quote, in_double_quote))
+        command = strip_shell_comment(command)
+        function_start = bool(re.match(
+            r"^\s*(?:function\s+[A-Za-z_][A-Za-z0-9_]*(?:\s*\(\s*\))?"
+            r"|[A-Za-z_][A-Za-z0-9_]*\s*\(\s*\))\s*\{", command))
+        if function_start and not in_function:
+            in_function = True
+            function_depth = 0
+            function_local_names.clear()
+
+        brace_tokens = re.findall(r"(?<!\S)[{}](?=\s|$|;)", command)
         for segment in shell_segments(command):
             stages = shell_pipeline_parts(segment)
             is_pipeline = len(stages) > 1
@@ -1554,15 +1679,23 @@ def shell_env_reads(text: str) -> list[tuple[str, int]]:
                     match = SHELL_ENV.match(stage, index)
                     if match:
                         name = match.group(1) or match.group(2)
-                        if name not in local_names:
+                        if (name not in local_names
+                                and (not in_function
+                                     or name not in function_local_names)):
                             found.append((name, line_number))
                         index = match.end()
                     else:
                         index += 1
                 assignment_only = bool(tokens) and len(assignment_tokens) == len(tokens)
                 if not is_pipeline and (declaration or assignment_only):
-                    local_names.update(
+                    (function_local_names if in_function else local_names).update(
                         token.split("=", 1)[0] for token in assignment_tokens)
+        if in_function:
+            function_depth += brace_tokens.count("{") - brace_tokens.count("}")
+            if function_depth <= 0:
+                in_function = False
+                function_local_names.clear()
+        heredoc_queue.extend(heredocs)
     return found
 
 
@@ -1816,7 +1949,9 @@ def build(repo: Path, files: list[str], check_paths: bool = False) -> dict:
             continue
 
         # 1. commands
-        for block in fenced_block_groups(text):
+        for language, block in fenced_code_block_groups(text):
+            if language in NON_SHELL_FENCE_LANGUAGES:
+                continue
             npm_cwd = documentation_npm_cwd(doc, npm_scripts)
             npm_directory_stack: list[Path | None] = []
             make_cwd = Path(".")
