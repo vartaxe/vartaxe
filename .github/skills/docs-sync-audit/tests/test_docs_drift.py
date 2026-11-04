@@ -11,6 +11,39 @@ SPEC.loader.exec_module(DOCS_DRIFT)
 
 
 class DocsDriftTests(unittest.TestCase):
+    def test_env_docs_under_skipped_directories_do_not_report_unused_settings(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            vendor_docs = repo / "vendor" / "README.md"
+            vendor_docs.parent.mkdir()
+            vendor_docs.write_text(
+                "Configure `VENDOR_SETTING` before use.\n", encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, ["vendor/README.md"])
+
+            self.assertNotIn(
+                "documented-unused-env",
+                {finding["kind"] for finding in result["findings"]})
+
+    def test_env_docs_under_skipped_directories_do_not_document_app_settings(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            (repo / "main.py").write_text(
+                "import os\nos.getenv('APP_SETTING')\n", encoding="utf-8")
+            vendor_docs = repo / "vendor" / "README.md"
+            vendor_docs.parent.mkdir()
+            vendor_docs.write_text(
+                "Configure `APP_SETTING` before use.\n", encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, ["main.py", "vendor/README.md"])
+
+            undocumented = [
+                finding for finding in result["findings"]
+                if finding["kind"] == "undocumented-env"
+            ]
+            self.assertEqual(len(undocumented), 1)
+            self.assertIn("APP_SETTING", undocumented[0]["detail"])
+
     def test_go_getenv_and_lookupenv_prevent_unused_env_finding(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = Path(temp_dir)
@@ -560,6 +593,31 @@ continues inside this code span`
             self.assertEqual(len(missing), 1)
             self.assertEqual(missing[0]["line"], 3)
 
+    def test_shell_continuations_join_script_commands_at_original_line(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            scripts = repo / "scripts"
+            scripts.mkdir()
+            (scripts / "existing.py").write_text("print('ok')\n", encoding="utf-8")
+            doc = repo / "README.md"
+            doc.write_text(
+                "```sh\n"
+                "python \\\n"
+                "  scripts/existing.py\n"
+                "python \\\n"
+                "  scripts/missing.py\n"
+                "```\n", encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, ["scripts/existing.py", "README.md"])
+            missing = [
+                finding for finding in result["findings"]
+                if finding["kind"] == "missing-script-file"
+            ]
+
+            self.assertEqual(len(missing), 1)
+            self.assertIn("scripts/missing.py", missing[0]["detail"])
+            self.assertEqual(missing[0]["line"], 4)
+
     def test_script_path_uses_cd_working_directory_on_same_line(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = Path(temp_dir)
@@ -648,6 +706,22 @@ continues inside this code span`
 
             (repo / "Makefile").write_text(
                 "include generated-rules.mk\n", encoding="utf-8")
+            result = DOCS_DRIFT.build(repo, ["Makefile", "README.md"])
+
+            self.assertNotIn(
+                "missing-make-target",
+                {finding["kind"] for finding in result["findings"]})
+
+    def test_default_rule_suppresses_negative_make_target_checks(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            (repo / "Makefile").write_text(
+                ".DEFAULT:\n\t@echo fallback for $@\n", encoding="utf-8")
+            (repo / "README.md").write_text(
+                "```sh\nmake generated\n```\n", encoding="utf-8")
+
+            self.assertFalse(
+                DOCS_DRIFT.makefile_inventory_complete(repo, "Makefile"))
             result = DOCS_DRIFT.build(repo, ["Makefile", "README.md"])
 
             self.assertNotIn(
@@ -1044,6 +1118,39 @@ continues inside this code span`
             ]
             self.assertEqual(len(missing_targets), 1)
             self.assertIn("unknown", missing_targets[0]["detail"])
+
+    def test_phony_target_inventory_and_unresolved_declarations(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            makefile = repo / "Makefile"
+            doc = repo / "README.md"
+            makefile.write_text(
+                ".PHONY: clean clean-all\n", encoding="utf-8")
+            doc.write_text(
+                "```sh\nmake clean\nmake clean-all\nmake unknown\n```\n",
+                encoding="utf-8")
+
+            self.assertEqual(
+                DOCS_DRIFT.makefile_targets(repo, "Makefile"),
+                {"clean", "clean-all"})
+            self.assertTrue(
+                DOCS_DRIFT.makefile_inventory_complete(repo, "Makefile"))
+            result = DOCS_DRIFT.build(repo, ["Makefile", "README.md"])
+            missing_targets = [
+                finding for finding in result["findings"]
+                if finding["kind"] == "missing-make-target"
+            ]
+            self.assertEqual(len(missing_targets), 1)
+            self.assertIn("unknown", missing_targets[0]["detail"])
+
+            makefile.write_text(
+                ".PHONY: $(EXTRA_TARGETS)\n", encoding="utf-8")
+            self.assertFalse(
+                DOCS_DRIFT.makefile_inventory_complete(repo, "Makefile"))
+            result = DOCS_DRIFT.build(repo, ["Makefile", "README.md"])
+            self.assertNotIn(
+                "missing-make-target",
+                {finding["kind"] for finding in result["findings"]})
 
     def test_make_target_declared_only_in_nested_makefile_is_missing_at_root(self):
         with tempfile.TemporaryDirectory() as temp_dir:

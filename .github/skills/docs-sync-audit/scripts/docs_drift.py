@@ -409,11 +409,47 @@ def dynamic_directory_target(target: str) -> bool:
 
 def makefile_targets(repo: Path, rel: str) -> set[str]:
     """Read static target names from one Makefile inventory."""
+    text = read(repo / rel)
     target_list = re.compile(
         r"^([A-Za-z0-9][A-Za-z0-9_.-]*(?:[ \t]+[A-Za-z0-9][A-Za-z0-9_.-]*)*):(?!=)",
         re.M)
-    return {target for match in target_list.finditer(read(repo / rel))
-            for target in match.group(1).split()}
+    phony_targets, _ = makefile_phony_targets(text)
+    return ({target for match in target_list.finditer(text)
+             for target in match.group(1).split()} | phony_targets)
+
+
+def makefile_phony_targets(text: str) -> tuple[set[str], bool]:
+    """Read literal .PHONY prerequisites and report unresolved declarations."""
+    targets = set()
+    unresolved = False
+    lines = text.splitlines()
+    index = 0
+    while index < len(lines):
+        match = re.match(r"^[ \t]*\.PHONY[ \t]*:(?!=)(.*)$", lines[index])
+        index += 1
+        if match is None:
+            continue
+
+        prerequisites = match.group(1)
+        while (len(prerequisites) - len(prerequisites.rstrip("\\"))) % 2:
+            if index == len(lines):
+                unresolved = True
+                prerequisites = prerequisites[:-1]
+                break
+            prerequisites = prerequisites[:-1] + " " + lines[index].lstrip()
+            index += 1
+
+        comment = re.search(r"(?<!\\)#", prerequisites)
+        if comment:
+            prerequisites = prerequisites[:comment.start()]
+        if "$" in prerequisites:
+            unresolved = True
+        for target in prerequisites.split():
+            if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", target):
+                targets.add(target)
+            else:
+                unresolved = True
+    return targets, unresolved
 
 
 def makefile_inventory_complete(repo: Path, rel: str) -> bool:
@@ -421,9 +457,13 @@ def makefile_inventory_complete(repo: Path, rel: str) -> bool:
     text = read(repo / rel)
     has_pattern_rule = re.search(r"^\s*[^:\n]*%[^:\n]*:", text, re.M)
     has_inclusion = re.search(r"^\s*(?:-?include|sinclude)\s+", text, re.M)
+    has_default_rule = re.search(r"^\s*\.DEFAULT[ \t]*:(?!=)", text, re.M)
     has_expanded_target = any(
         make_rule_has_expanded_target(line) for line in text.splitlines())
-    return not (has_pattern_rule or has_inclusion or has_expanded_target)
+    _, has_unresolved_phony = makefile_phony_targets(text)
+    return not (
+        has_pattern_rule or has_inclusion or has_default_rule or has_expanded_target
+        or has_unresolved_phony)
 
 
 def make_rule_has_expanded_target(line: str) -> bool:
@@ -1654,7 +1694,7 @@ def shell_line_without_single_quotes(
 
 def shell_command_lines(
         block: list[tuple[int, str]]) -> list[tuple[int, str]]:
-    """Mask shell heredoc bodies and multiline string literals in a code block."""
+    """Mask shell heredoc bodies and join continued lines in a code block."""
     command_lines = []
     heredoc_queue: list[tuple[str, bool]] = []
     quote: str | None = None
@@ -1745,7 +1785,24 @@ def shell_command_lines(
         command_lines.append((line_number, "".join(masked)))
         heredoc_queue.extend(heredocs)
 
-    return command_lines
+    logical_lines = []
+    pending_line = ""
+    pending_line_number = None
+    for line_number, line in command_lines:
+        if pending_line_number is None:
+            pending_line_number = line_number
+        pending_line += line
+        trailing_backslashes = len(pending_line) - len(pending_line.rstrip("\\"))
+        if trailing_backslashes % 2:
+            pending_line = pending_line[:-1]
+            continue
+        logical_lines.append((pending_line_number, pending_line))
+        pending_line = ""
+        pending_line_number = None
+
+    if pending_line_number is not None:
+        logical_lines.append((pending_line_number, pending_line))
+    return logical_lines
 
 
 def shell_env_reads(text: str) -> list[tuple[str, int]]:
@@ -2021,6 +2078,8 @@ def env_names_documented(repo: Path, files: list[str],
     """
     documented: dict[str, str] = {}
     for rel in files:
+        if any(part in SKIP_DIRS for part in Path(rel).parts):
+            continue
         base = Path(rel).name
         is_env_sample = (
             base.startswith(".env.")
