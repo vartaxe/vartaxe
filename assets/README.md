@@ -1,7 +1,8 @@
 # Profile artwork
 
 The profile and the ConfigMgr OSD projects share a blue and teal visual identity.
-All artwork is stored in this repository. Only the CI status badges are loaded from GitHub Actions.
+All profile artwork is stored in this repository; the profile currently embeds no remote
+images or CI badges.
 
 ## Theme and layout
 
@@ -22,7 +23,7 @@ an explicit height, which otherwise leaves excess vertical space. Intrinsic widt
 height, and viewBox remain in each SVG; standalone technology icons retain both
 HTML dimensions.
 
-CI badges report push runs on `main`, not deployment certification.
+If CI badges are added, they should report push runs on `main`, not deployment certification.
 The [funding configuration](../.github/FUNDING.yml) points to the existing GitHub Sponsors account.
 The repository's Sponsor button requires this file on the default branch and sponsorships enabled in its settings.
 

@@ -48,6 +48,8 @@ jobs:
         shell: bash
         run: |
           test -s _site/index.html
+          grep -F 'Redirecting to the canonical vartaxe hub' _site/index.html
+          grep -F 'https://vartaxe.github.io/' _site/index.html
           test -s _site/docs/workstation.html
-          grep -F "Maintained fork" _site/index.html
+          grep -F "maintained fork" _site/index.html
           grep -F "DriverAutomationTool" _site/index.html
