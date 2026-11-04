@@ -554,6 +554,15 @@ continues inside this code span`
 
         self.assertEqual(DOCS_DRIFT.shell_env_reads(source), [("API_TOKEN", 2)])
 
+    def test_bash_here_string_operand_and_following_reads_are_scanned(self):
+        source = (
+            'read -r line <<< "$API_TOKEN"\n'
+            'printf "%s" "$HOST"\n')
+
+        self.assertEqual(
+            DOCS_DRIFT.shell_env_reads(source),
+            [("API_TOKEN", 1), ("HOST", 2)])
+
     def test_function_local_assignments_do_not_suppress_top_level_reads(self):
         source = (
             "configure() {\n"

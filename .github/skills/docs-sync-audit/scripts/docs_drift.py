@@ -1711,6 +1711,9 @@ def shell_line_without_single_quotes(
             continue
         if char == "#" and (index == 0 or line[index - 1].isspace()):
             break
+        if line.startswith("<<<", index):
+            index += 3
+            continue
         if line.startswith("<<", index):
             delimiter_start = index + 2
             strip_tabs = delimiter_start < len(line) and line[delimiter_start] == "-"
