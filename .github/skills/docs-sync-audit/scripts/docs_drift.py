@@ -123,7 +123,7 @@ POWERSHELL_ENV = re.compile(
     r"(?i)\$(?:env:([A-Za-z_][A-Za-z0-9_]*)|"
     r"\{env:([A-Za-z_][A-Za-z0-9_().-]*)\})")
 SHELL_ENV = re.compile(
-    r"\$(?:\{([A-Z][A-Z0-9_]*)(?=[:+\-?}=])|([A-Z][A-Z0-9_]*)\b)")
+    r"\$(?:\{#?([A-Z][A-Z0-9_]*)(?=[:+\-?}=#%])|([A-Z][A-Z0-9_]*)\b)")
 
 # Import forms across the languages handled above. Four alternatives, so findall
 # returns tuples and the caller takes the first non-empty group.
@@ -1070,6 +1070,8 @@ def markdown_lines_without_code(text: str) -> list[tuple[int, str]]:
     fence_char = ""
     fence_length = 0
     fence_depth = 0
+    list_indents: list[tuple[int, int, int]] = []
+    paragraph_open = False
     for i, line in enumerate(lines):
         depth, content = markdown_blockquote_content(line)
         marker = MARKDOWN_FENCE.match(content)
@@ -1080,13 +1082,56 @@ def markdown_lines_without_code(text: str) -> list[tuple[int, str]]:
                 fence_length = 0
                 fence_depth = 0
             fenced_lines[i] = True
+            paragraph_open = False
         elif marker:
             fence_char = marker.group(1)[0]
             fence_length = len(marker.group(1))
             fence_depth = depth
             fenced_lines[i] = True
-        elif content.startswith(("    ", "\t")):
-            fenced_lines[i] = True
+            paragraph_open = False
+        elif not content.strip():
+            paragraph_open = False
+        else:
+            raw_indent = len(content) - len(content.lstrip(" "))
+            container_indent = 0
+            while list_indents:
+                _, content_indent, list_depth = list_indents[-1]
+                if depth >= list_depth and raw_indent >= content_indent:
+                    container_indent = content_indent
+                    break
+                list_indents.pop()
+
+            effective_content = content[container_indent:]
+            list_item = re.match(
+                r"^( {0,3})([-+*]|\d{1,9}[.)])([ \t]+|$)",
+                effective_content)
+            if list_item:
+                item_indent = container_indent + len(list_item.group(1))
+                while list_indents and list_indents[-1][0] >= item_indent:
+                    list_indents.pop()
+                padding = list_item.group(3)
+                padding_width = min(len(padding.expandtabs(4)), 4) if padding else 1
+                list_indents.append((
+                    item_indent,
+                    item_indent + len(list_item.group(2)) + padding_width,
+                    depth))
+                paragraph_open = bool(
+                    effective_content[list_item.end():].strip())
+                continue
+
+            effective_indent = (
+                len(effective_content) - len(effective_content.lstrip(" ")))
+            heading = re.match(
+                r"^[ \t]{0,3}#{1,6}(?:[ \t]+|$)", effective_content)
+            if (not paragraph_open
+                    and (effective_indent >= 4
+                         or effective_content.startswith("\t"))):
+                fenced_lines[i] = True
+                paragraph_open = False
+            elif heading:
+                paragraph_open = False
+            else:
+                paragraph_open = True
 
     cleaned_lines = [list(line) for line in lines]
     segment_start = 0
@@ -1504,7 +1549,8 @@ def script_commands_in_line(
             elif re.fullmatch(r"\./[A-Za-z0-9_./-]+", executable):
                 candidate = executable
             if candidate and not PLACEHOLDER.search(candidate):
-                commands.append((candidate, cwd, explicit_directory_change))
+                commands.append((
+                    candidate.replace("\\", "/"), cwd, explicit_directory_change))
     return cwd, directory_stack, explicit_directory_change, commands
 
 
@@ -1639,8 +1685,8 @@ def powershell_env_reads(text: str) -> list[tuple[str, int]]:
 
 def shell_line_without_single_quotes(
         line: str, in_single_quote: bool, in_double_quote: bool
-        ) -> tuple[str, bool, bool, list[tuple[str, bool]]]:
-    """Mask single-quoted text and collect quoted here-document delimiters."""
+        ) -> tuple[str, bool, bool, list[tuple[str, bool, bool]]]:
+    """Mask single-quoted text and collect here-document delimiters."""
     masked = list(line)
     heredocs = []
     index = 0
@@ -1672,17 +1718,42 @@ def shell_line_without_single_quotes(
                 delimiter_start += 1
             while delimiter_start < len(line) and line[delimiter_start] in " \t":
                 delimiter_start += 1
-            if (delimiter_start < len(line)
-                    and line[delimiter_start] in {"'", '"'}):
-                quote = line[delimiter_start]
-                delimiter_end = line.find(quote, delimiter_start + 1)
-                if delimiter_end >= 0:
-                    heredocs.append(
-                        (line[delimiter_start + 1:delimiter_end], strip_tabs))
-                    for position in range(delimiter_start, delimiter_end + 1):
-                        masked[position] = " "
-                    index = delimiter_end + 1
-                    continue
+            delimiter_end = delimiter_start
+            delimiter_parts = []
+            delimiter_quote = None
+            delimiter_quoted = False
+            while delimiter_end < len(line):
+                delimiter_char = line[delimiter_end]
+                if delimiter_quote:
+                    if delimiter_char == delimiter_quote:
+                        delimiter_quote = None
+                    elif (delimiter_char == "\\"
+                          and delimiter_quote == '"'
+                          and delimiter_end + 1 < len(line)
+                          and line[delimiter_end + 1] in '$`"\\'):
+                        delimiter_end += 1
+                        delimiter_parts.append(line[delimiter_end])
+                    else:
+                        delimiter_parts.append(delimiter_char)
+                elif delimiter_char in {"'", '"'}:
+                    delimiter_quote = delimiter_char
+                    delimiter_quoted = True
+                elif delimiter_char == "\\" and delimiter_end + 1 < len(line):
+                    delimiter_quoted = True
+                    delimiter_end += 1
+                    delimiter_parts.append(line[delimiter_end])
+                elif delimiter_char.isspace() or delimiter_char in ";|&<>":
+                    break
+                else:
+                    delimiter_parts.append(delimiter_char)
+                delimiter_end += 1
+            if delimiter_end > delimiter_start and not delimiter_quote:
+                heredocs.append((
+                    "".join(delimiter_parts), strip_tabs, not delimiter_quoted))
+                for position in range(delimiter_start, delimiter_end):
+                    masked[position] = " "
+                index = delimiter_end
+                continue
         if char == "'":
             in_single_quote = True
             masked[index] = " "
@@ -1814,13 +1885,27 @@ def shell_env_reads(text: str) -> list[tuple[str, int]]:
     in_function = False
     in_single_quote = False
     in_double_quote = False
-    heredoc_queue: list[tuple[str, bool]] = []
+    heredoc_queue: list[tuple[str, bool, bool]] = []
     for line_number, line in enumerate(text.splitlines(), start=1):
         if heredoc_queue:
-            delimiter, strip_tabs = heredoc_queue[0]
+            delimiter, strip_tabs, expand_body = heredoc_queue[0]
             body_line = line.lstrip("\t") if strip_tabs else line
             if body_line == delimiter:
                 heredoc_queue.pop(0)
+            elif expand_body:
+                for match in SHELL_ENV.finditer(line):
+                    backslashes = 0
+                    cursor = match.start() - 1
+                    while cursor >= 0 and line[cursor] == "\\":
+                        backslashes += 1
+                        cursor -= 1
+                    if backslashes % 2:
+                        continue
+                    name = match.group(1) or match.group(2)
+                    if (name not in local_names
+                            and (not in_function
+                                 or name not in function_local_names)):
+                        found.append((name, line_number))
             continue
 
         command, in_single_quote, in_double_quote, heredocs = (
@@ -1936,7 +2021,7 @@ def python_env_reads(text: str) -> list[tuple[str, int]]:
                 key = target.slice
                 if isinstance(key, ast.Constant) and isinstance(key.value, str):
                     found.append((key.value, node.lineno))
-        elif isinstance(node, ast.Call) and node.args:
+        elif isinstance(node, ast.Call):
             function = node.func
             is_getenv = (
                 isinstance(function, ast.Name)
@@ -1953,7 +2038,10 @@ def python_env_reads(text: str) -> list[tuple[str, int]]:
                 and environment_expression(function.value)
             )
             if is_getenv or is_environ_get:
-                name = node.args[0]
+                name = node.args[0] if node.args else next(
+                    (keyword.value for keyword in node.keywords
+                     if keyword.arg == "key"),
+                    None)
                 if isinstance(name, ast.Constant) and isinstance(name.value, str):
                     found.append((name.value, node.lineno))
         elif isinstance(node, ast.Subscript) and isinstance(node.ctx, ast.Load):

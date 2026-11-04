@@ -502,6 +502,19 @@ continues inside this code span`
             self.assertEqual(
                 set(env_names), {"PORT", "HOST", "FEATURE", "MODE"})
 
+    def test_shell_length_and_suffix_removal_expansions_are_reads(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            script = repo / "main.sh"
+            script.write_text(
+                'echo "${#API_TOKEN}"\n'
+                'echo "${API_TOKEN%ken}"\n',
+                encoding="utf-8")
+
+            env_names = DOCS_DRIFT.env_names_from_code(repo, ["main.sh"])
+
+            self.assertEqual(set(env_names), {"API_TOKEN"})
+
     def test_shell_command_assignments_do_not_become_persistent_locals(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = Path(temp_dir)
@@ -524,7 +537,7 @@ continues inside this code span`
     def test_shell_multiline_single_quotes_and_quoted_heredocs_are_ignored(self):
         source = (
             "cat <<'EOF'\n"
-            "$HEREDOC_SECRET\n"
+            "'$HEREDOC_SECRET'\n"
             "EOF\n"
             "VALUE='first line\n"
             "$QUOTED_SECRET'\n"
@@ -532,6 +545,14 @@ continues inside this code span`
 
         self.assertEqual(
             DOCS_DRIFT.shell_env_reads(source), [("ACTUAL_READ", 6)])
+
+    def test_unquoted_heredoc_expansions_are_reads_inside_quote_characters(self):
+        source = (
+            "cat <<EOF\n"
+            "'$API_TOKEN'\n"
+            "EOF\n")
+
+        self.assertEqual(DOCS_DRIFT.shell_env_reads(source), [("API_TOKEN", 2)])
 
     def test_function_local_assignments_do_not_suppress_top_level_reads(self):
         source = (
@@ -562,6 +583,26 @@ continues inside this code span`
             self.assertEqual(
                 env_names,
                 {"API_TOKEN": ["main.py:6"], "PORT": ["main.py:7"]})
+
+    def test_python_env_keyword_argument_matches_documented_setting(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            (repo / "main.py").write_text(
+                "import os\n"
+                "token = os.getenv(key='API_TOKEN')\n",
+                encoding="utf-8")
+            (repo / "README.md").write_text(
+                "Configure `API_TOKEN` before running the script.\n",
+                encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, ["main.py", "README.md"])
+
+            env_findings = {
+                finding["kind"] for finding in result["findings"]
+                if finding["kind"] in {
+                    "documented-unused-env", "undocumented-env"}
+            }
+            self.assertEqual(env_findings, set())
 
     def test_python_environment_augmented_assignment_is_a_read(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -856,6 +897,24 @@ continues inside this code span`
                 if finding["kind"] == "missing-script-file"
             ]
             self.assertEqual(len(missing), 2)
+
+    def test_script_path_normalizes_windows_separators_without_cd(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            scripts = repo / "scripts"
+            scripts.mkdir()
+            (scripts / "configure.ps1").write_text(
+                "Write-Output ok\n", encoding="utf-8")
+            (repo / "README.md").write_text(
+                "```sh\npwsh -File .\\scripts\\configure.ps1\n```\n",
+                encoding="utf-8")
+
+            result = DOCS_DRIFT.build(
+                repo, ["scripts/configure.ps1", "README.md"])
+
+            self.assertNotIn(
+                "missing-script-file",
+                {finding["kind"] for finding in result["findings"]})
 
     def test_unresolved_pushd_keeps_prior_directories_for_popd(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1333,6 +1392,49 @@ continues inside this code span`
 
             self.assertNotIn(
                 "broken-link", {finding["kind"] for finding in result["findings"]})
+
+    def test_markdown_links_in_list_paragraphs_are_checked(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            (repo / "README.md").write_text(
+                "1. Item\n"
+                "\n"
+                "    [Guide](missing.md)\n"
+                "\n"
+                "> 1. Quoted item\n"
+                ">\n"
+                ">     [Quoted guide](missing-quoted.md)\n",
+                encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, ["README.md"])
+
+            broken = [
+                finding for finding in result["findings"]
+                if finding["kind"] == "broken-link"
+            ]
+            self.assertEqual([finding["line"] for finding in broken], [3, 7])
+
+    def test_paragraph_continuations_are_checked_but_list_code_is_ignored(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            (repo / "README.md").write_text(
+                "Paragraph\n"
+                "    [continued](missing-paragraph.md)\n"
+                "\n"
+                "1. Item\n"
+                "\n"
+                "       [code](missing-list-code.md)\n",
+                encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, ["README.md"])
+
+            broken = [
+                finding for finding in result["findings"]
+                if finding["kind"] == "broken-link"
+            ]
+            self.assertEqual(len(broken), 1)
+            self.assertEqual(broken[0]["line"], 2)
+            self.assertIn("missing-paragraph.md", broken[0]["detail"])
 
     def test_inline_code_spans_do_not_cross_markdown_heading_boundaries(self):
         with tempfile.TemporaryDirectory() as temp_dir:
