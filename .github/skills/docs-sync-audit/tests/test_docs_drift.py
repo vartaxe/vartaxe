@@ -2044,6 +2044,52 @@ npm run build
                 }
                 for finding in result["findings"]))
 
+    def test_command_scanner_checks_scripts_after_bash_here_string(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            doc = repo / "README.md"
+            doc.write_text(
+                '```sh\ncat <<< "value"\npython scripts/removed.py\n```\n',
+                encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, ["README.md"])
+
+            self.assertTrue(any(
+                finding["kind"] == "missing-script-file"
+                and "scripts/removed.py" in finding["detail"]
+                for finding in result["findings"]))
+
+    def test_command_scanner_removes_escaped_heredoc_delimiter_quotes(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            (repo / "Makefile").write_text("existing:\n", encoding="utf-8")
+            doc = repo / "README.md"
+            doc.write_text(
+                "```sh\n"
+                "cat <<\\EOF\n"
+                "python scripts/in-heredoc.py\n"
+                "make in-heredoc\n"
+                "EOF\n"
+                "python scripts/removed.py\n"
+                "make removed-target\n"
+                "```\n",
+                encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, ["Makefile", "README.md"])
+
+            missing = {
+                (finding["kind"], finding["detail"])
+                for finding in result["findings"]
+            }
+            self.assertTrue(any(
+                kind == "missing-script-file" and "scripts/removed.py" in detail
+                for kind, detail in missing))
+            self.assertTrue(any(
+                kind == "missing-make-target" and "removed-target" in detail
+                for kind, detail in missing))
+            self.assertFalse(any(
+                "in-heredoc" in detail for _, detail in missing))
+
     def test_command_scanners_only_check_executables_and_support_wrappers_and_pipelines(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = Path(temp_dir)

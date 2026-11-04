@@ -1683,6 +1683,52 @@ def powershell_env_reads(text: str) -> list[tuple[str, int]]:
     return found
 
 
+def parse_shell_heredoc_delimiter(
+        line: str, index: int
+        ) -> tuple[str, bool, bool, int, int] | None:
+    """Parse a heredoc delimiter, applying shell quote removal."""
+    delimiter_start = index + 2
+    strip_tabs = delimiter_start < len(line) and line[delimiter_start] == "-"
+    if strip_tabs:
+        delimiter_start += 1
+    while delimiter_start < len(line) and line[delimiter_start] in " \t":
+        delimiter_start += 1
+    delimiter_end = delimiter_start
+    delimiter_parts = []
+    delimiter_quote = None
+    delimiter_quoted = False
+    while delimiter_end < len(line):
+        delimiter_char = line[delimiter_end]
+        if delimiter_quote:
+            if delimiter_char == delimiter_quote:
+                delimiter_quote = None
+            elif (delimiter_char == "\\"
+                  and delimiter_quote == '"'
+                  and delimiter_end + 1 < len(line)
+                  and line[delimiter_end + 1] in '$`"\\'):
+                delimiter_end += 1
+                delimiter_parts.append(line[delimiter_end])
+            else:
+                delimiter_parts.append(delimiter_char)
+        elif delimiter_char in {"'", '"'}:
+            delimiter_quote = delimiter_char
+            delimiter_quoted = True
+        elif delimiter_char == "\\" and delimiter_end + 1 < len(line):
+            delimiter_quoted = True
+            delimiter_end += 1
+            delimiter_parts.append(line[delimiter_end])
+        elif delimiter_char.isspace() or delimiter_char in ";|&<>":
+            break
+        else:
+            delimiter_parts.append(delimiter_char)
+        delimiter_end += 1
+    if delimiter_end <= delimiter_start or delimiter_quote:
+        return None
+    return (
+        "".join(delimiter_parts), strip_tabs, not delimiter_quoted,
+        delimiter_start, delimiter_end)
+
+
 def shell_line_without_single_quotes(
         line: str, in_single_quote: bool, in_double_quote: bool
         ) -> tuple[str, bool, bool, list[tuple[str, bool, bool]]]:
@@ -1715,44 +1761,11 @@ def shell_line_without_single_quotes(
             index += 3
             continue
         if line.startswith("<<", index):
-            delimiter_start = index + 2
-            strip_tabs = delimiter_start < len(line) and line[delimiter_start] == "-"
-            if strip_tabs:
-                delimiter_start += 1
-            while delimiter_start < len(line) and line[delimiter_start] in " \t":
-                delimiter_start += 1
-            delimiter_end = delimiter_start
-            delimiter_parts = []
-            delimiter_quote = None
-            delimiter_quoted = False
-            while delimiter_end < len(line):
-                delimiter_char = line[delimiter_end]
-                if delimiter_quote:
-                    if delimiter_char == delimiter_quote:
-                        delimiter_quote = None
-                    elif (delimiter_char == "\\"
-                          and delimiter_quote == '"'
-                          and delimiter_end + 1 < len(line)
-                          and line[delimiter_end + 1] in '$`"\\'):
-                        delimiter_end += 1
-                        delimiter_parts.append(line[delimiter_end])
-                    else:
-                        delimiter_parts.append(delimiter_char)
-                elif delimiter_char in {"'", '"'}:
-                    delimiter_quote = delimiter_char
-                    delimiter_quoted = True
-                elif delimiter_char == "\\" and delimiter_end + 1 < len(line):
-                    delimiter_quoted = True
-                    delimiter_end += 1
-                    delimiter_parts.append(line[delimiter_end])
-                elif delimiter_char.isspace() or delimiter_char in ";|&<>":
-                    break
-                else:
-                    delimiter_parts.append(delimiter_char)
-                delimiter_end += 1
-            if delimiter_end > delimiter_start and not delimiter_quote:
-                heredocs.append((
-                    "".join(delimiter_parts), strip_tabs, not delimiter_quoted))
+            parsed = parse_shell_heredoc_delimiter(line, index)
+            if parsed:
+                (delimiter, strip_tabs, expand_body,
+                 delimiter_start, delimiter_end) = parsed
+                heredocs.append((delimiter, strip_tabs, expand_body))
                 for position in range(delimiter_start, delimiter_end):
                     masked[position] = " "
                 index = delimiter_end
@@ -1809,33 +1822,18 @@ def shell_command_lines(
                 continue
             if char == "#" and (index == 0 or line[index - 1].isspace()):
                 break
-            if line.startswith("<<", index) and not line.startswith("<<<", index):
-                delimiter_start = index + 2
-                strip_tabs = delimiter_start < len(line) and line[delimiter_start] == "-"
-                if strip_tabs:
-                    delimiter_start += 1
-                while delimiter_start < len(line) and line[delimiter_start] in " \t":
-                    delimiter_start += 1
-                if delimiter_start < len(line):
-                    delimiter_quote = line[delimiter_start]
-                    if delimiter_quote in {"'", '"'}:
-                        delimiter_end = line.find(delimiter_quote, delimiter_start + 1)
-                        if delimiter_end >= 0:
-                            delimiter = line[delimiter_start + 1:delimiter_end]
-                            heredocs.append((delimiter, strip_tabs))
-                            index = delimiter_end + 1
-                            continue
-                    else:
-                        delimiter_end = delimiter_start
-                        while (delimiter_end < len(line)
-                               and not line[delimiter_end].isspace()
-                               and line[delimiter_end] not in ";|&<>"):
-                            delimiter_end += 1
-                        if delimiter_end > delimiter_start:
-                            heredocs.append((
-                                line[delimiter_start:delimiter_end], strip_tabs))
-                            index = delimiter_end
-                            continue
+            if line.startswith("<<<", index):
+                index += 3
+                continue
+            if line.startswith("<<", index):
+                parsed = parse_shell_heredoc_delimiter(line, index)
+                if parsed:
+                    delimiter, strip_tabs, _, delimiter_start, delimiter_end = parsed
+                    heredocs.append((delimiter, strip_tabs))
+                    for position in range(delimiter_start, delimiter_end):
+                        masked[position] = " "
+                    index = delimiter_end
+                    continue
             if char in {"'", '"'}:
                 quote = char
                 index += 1
