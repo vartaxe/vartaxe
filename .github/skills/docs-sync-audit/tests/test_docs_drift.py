@@ -1274,6 +1274,41 @@ continues inside this code span`
             self.assertEqual(len(broken), 1)
             self.assertIn("missing.md", broken[0]["detail"])
 
+    def test_html_comments_do_not_report_links_or_shift_line_numbers(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            (repo / "README.md").write_text(
+                "<!-- [commented](missing-commented.md) -->\n"
+                "[Visible](missing-visible.md)\n",
+                encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, ["README.md"])
+
+            broken = [
+                finding for finding in result["findings"]
+                if finding["kind"] == "broken-link"
+            ]
+            self.assertEqual(len(broken), 1)
+            self.assertIn("missing-visible.md", broken[0]["detail"])
+            self.assertEqual(broken[0]["line"], 2)
+
+    def test_multiline_html_comment_reference_definition_is_ignored(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            (repo / "existing.md").write_text("# Existing\n", encoding="utf-8")
+            (repo / "README.md").write_text(
+                "<!--\n"
+                "[target]: missing.md\n"
+                "-->\n"
+                "[target]: existing.md\n"
+                "[Guide][target]\n",
+                encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, ["README.md", "existing.md"])
+
+            self.assertNotIn(
+                "broken-link", {finding["kind"] for finding in result["findings"]})
+
     def test_nested_reference_image_inside_link_label_is_checked(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = Path(temp_dir)
@@ -1282,6 +1317,23 @@ continues inside this code span`
                 "[outer ![preview][image]][outer]\n"
                 "[image]: missing.png\n"
                 "[outer]: existing.md\n",
+                encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, ["README.md", "existing.md"])
+
+            broken = [
+                finding for finding in result["findings"]
+                if finding["kind"] == "broken-link"
+            ]
+            self.assertEqual(len(broken), 1)
+            self.assertIn("missing.png", broken[0]["detail"])
+
+    def test_nested_inline_image_inside_inline_link_is_reported_once(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            (repo / "existing.md").write_text("# Existing\n", encoding="utf-8")
+            (repo / "README.md").write_text(
+                "[outer ![preview](missing.png)](existing.md)\n",
                 encoding="utf-8")
 
             result = DOCS_DRIFT.build(repo, ["README.md", "existing.md"])
@@ -1487,6 +1539,39 @@ npm run build
             self.assertIn("build", missing_scripts[0]["detail"])
             self.assertEqual(missing_scripts[0]["line"], 15)
 
+    def test_npm_workspace_selectors_resolve_from_prefix_workspace_root(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            (repo / "packages" / "app").mkdir(parents=True)
+            workspace = repo / "tools" / "packages" / "app"
+            workspace.mkdir(parents=True)
+            (repo / "packages" / "app" / "package.json").write_text(
+                '{"name": "@acme/app", "scripts": {"build": "build"}}\n',
+                encoding="utf-8")
+            (repo / "package.json").write_text('{}\n', encoding="utf-8")
+            (repo / "tools" / "package.json").write_text(
+                '{"workspaces": ["packages/*"]}\n', encoding="utf-8")
+            (workspace / "package.json").write_text(
+                '{"name": "@acme/app", "scripts": {}}\n', encoding="utf-8")
+            (repo / "README.md").write_text(
+                "```sh\n"
+                "npm --prefix tools -w packages/app run build\n"
+                "npm --prefix tools -w @acme/app run build\n"
+                "```\n",
+                encoding="utf-8")
+
+            result = DOCS_DRIFT.build(
+                repo,
+                ["package.json", "packages/app/package.json",
+                 "tools/package.json", "tools/packages/app/package.json",
+                 "README.md"])
+
+            missing_scripts = [
+                finding for finding in result["findings"]
+                if finding["kind"] == "missing-script"]
+            self.assertEqual(len(missing_scripts), 2)
+            self.assertEqual([finding["line"] for finding in missing_scripts], [2, 3])
+
     def test_npm_workspace_path_selector_uses_workspace_scripts(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = Path(temp_dir)
@@ -1689,6 +1774,57 @@ npm run build
             self.assertEqual(
                 DOCS_DRIFT.strip_shell_comment("make build#literal"),
                 "make build#literal")
+
+    def test_command_scanners_ignore_heredocs_and_multiline_strings(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            nested = repo / "nested"
+            nested.mkdir()
+            (repo / "package.json").write_text(
+                '{"scripts": {"build": "build"}}\n', encoding="utf-8")
+            (nested / "package.json").write_text(
+                '{"scripts": {"nested": "nested"}}\n', encoding="utf-8")
+            (repo / "Makefile").write_text("root-target:\n", encoding="utf-8")
+            (nested / "Makefile").write_text("nested-target:\n", encoding="utf-8")
+            scripts = repo / "scripts"
+            scripts.mkdir()
+            (scripts / "root.py").write_text("print('ok')\n", encoding="utf-8")
+            (repo / "README.md").write_text(
+                "```sh\n"
+                "cat <<DOC\n"
+                "cd nested\n"
+                "npm run missing\n"
+                "make missing\n"
+                "python scripts/missing.py\n"
+                "DOC\n"
+                "printf '%s' 'literal\n"
+                "cd nested\n"
+                "npm run missing\n"
+                "make missing\n"
+                "python scripts/missing.py\n"
+                "'\n"
+                'printf "%s" "literal\n'
+                "cd nested\n"
+                "npm run missing\n"
+                "make missing\n"
+                "python scripts/missing.py\n"
+                '"\n'
+                "npm run build\n"
+                "make root-target\n"
+                "python scripts/root.py\n"
+                "```\n", encoding="utf-8")
+
+            result = DOCS_DRIFT.build(repo, [
+                "package.json", "nested/package.json",
+                "Makefile", "nested/Makefile",
+                "scripts/root.py", "README.md",
+            ])
+
+            self.assertFalse(any(
+                finding["kind"] in {
+                    "missing-script", "missing-make-target", "missing-script-file"
+                }
+                for finding in result["findings"]))
 
     def test_command_scanners_only_check_executables_and_support_wrappers_and_pipelines(self):
         with tempfile.TemporaryDirectory() as temp_dir:

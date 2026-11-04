@@ -251,9 +251,9 @@ def workspace_glob_matches(directory: str, pattern: str) -> bool:
     return bool(path_parts and pattern_parts) and match(0, 0)
 
 
-def npm_workspaces(repo: Path, npm: dict[str, set[str]],
-                   cwd: Path = Path(".")) -> list[set[str]] | None:
-    """Resolve workspaces from the nearest package root containing the invocation cwd."""
+def npm_workspace_paths(repo: Path, npm: dict[str, set[str]],
+                        cwd: Path = Path(".")) -> list[str] | None:
+    """Resolve workspace directories from the nearest workspace root containing cwd."""
     invocation_dir = (repo / cwd).resolve()
     repo_root = repo.resolve()
     for root in (invocation_dir, *invocation_dir.parents):
@@ -296,10 +296,19 @@ def npm_workspaces(repo: Path, npm: dict[str, set[str]],
                 for directory in selected):
             continue
         return [
-            npm[root_rel + "/" + directory if root_rel else directory]
+            root_rel + "/" + directory if root_rel else directory
             for directory in selected
         ]
     return None
+
+
+def npm_workspaces(repo: Path, npm: dict[str, set[str]],
+                   cwd: Path = Path(".")) -> list[set[str]] | None:
+    """Resolve workspace scripts from the nearest workspace root containing cwd."""
+    directories = npm_workspace_paths(repo, npm, cwd)
+    if directories is None:
+        return None
+    return [npm[directory] for directory in directories]
 
 
 def fenced_blocks(text: str) -> list[tuple[int, str]]:
@@ -481,18 +490,20 @@ def npm_package_scripts(npm: dict[str, set[str]], cwd: Path) -> set[str]:
 
 def npm_workspace_package_scripts(
         repo: Path, npm: dict[str, set[str]], workspace_names: dict[str, set[str]],
-        selector: str) -> set[str] | None:
-    """Resolve a workspace selector by package directory or package name."""
+        selector: str, cwd: Path) -> set[str] | None:
+    """Resolve a selector relative to cwd, within its applicable workspace root."""
+    workspace_paths = npm_workspace_paths(repo, npm, cwd)
+    applicable_paths = set(workspace_paths) if workspace_paths is not None else set(npm)
     target = Path(selector.replace("\\", "/"))
-    candidate = target if target.is_absolute() else repo / target
+    candidate = target if target.is_absolute() else repo / cwd / target
     try:
         directory = candidate.resolve().relative_to(repo.resolve()).as_posix()
     except ValueError:
         return None
-    if directory in npm:
+    if directory in applicable_paths:
         return npm[directory]
 
-    matches = workspace_names.get(selector, set())
+    matches = workspace_names.get(selector, set()) & applicable_paths
     if len(matches) == 1:
         return npm.get(next(iter(matches)))
     return None
@@ -845,7 +856,7 @@ def npm_commands_in_line(repo: Path, npm: dict[str, set[str]], line: str,
                 resolved = True
                 for selector in workspace_selectors:
                     scripts = npm_workspace_package_scripts(
-                        repo, npm, workspace_names or {}, selector)
+                        repo, npm, workspace_names or {}, selector, command_cwd)
                     if scripts is None:
                         resolved = False
                         break
@@ -1118,6 +1129,38 @@ def markdown_reference_label(label: str) -> str:
     return re.sub(r"\s+", " ", label).strip().casefold()
 
 
+def markdown_lines_without_html_comments(
+        lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
+    """Mask HTML comments while preserving line numbers and remaining text."""
+    masked_lines = []
+    in_comment = False
+    for line_number, line in lines:
+        masked = list(line)
+        index = 0
+        while index < len(line):
+            if in_comment:
+                comment_end = line.find("-->", index)
+                end = len(line) if comment_end < 0 else comment_end + 3
+                masked[index:end] = [" "] * (end - index)
+                index = end
+                if comment_end < 0:
+                    break
+                in_comment = False
+                continue
+
+            comment_start = line.find("<!--", index)
+            if comment_start < 0:
+                break
+            comment_end = line.find("-->", comment_start + 4)
+            end = len(line) if comment_end < 0 else comment_end + 3
+            masked[comment_start:end] = [" "] * (end - comment_start)
+            index = end
+            if comment_end < 0:
+                in_comment = True
+        masked_lines.append((line_number, "".join(masked)))
+    return masked_lines
+
+
 def markdown_bracket_end(text: str, start: int) -> int | None:
     """Find a closing bracket while respecting nested brackets and escapes."""
     depth = 0
@@ -1252,6 +1295,7 @@ def markdown_image_links(
 
 def markdown_links(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
     """Extract inline and reference-style Markdown links from code-free lines."""
+    lines = markdown_lines_without_html_comments(lines)
     references: dict[str, str] = {}
     definition_lines = set()
     for line_number, line in lines:
@@ -1284,8 +1328,6 @@ def markdown_links(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
                 continue
 
             label = line[index + 1:closing]
-            if "[" in label:
-                links.extend(markdown_image_links(label, line_number, references))
             after = closing + 1
             if after < len(line) and line[after] == "(":
                 destination = markdown_link_destination(line, after + 1)
@@ -1293,6 +1335,9 @@ def markdown_links(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
                     links.append((line_number, destination[0]))
                 index += 1
                 continue
+
+            if "[" in label:
+                links.extend(markdown_image_links(label, line_number, references))
 
             reference = None
             if after < len(line) and line[after] == "[":
@@ -1605,6 +1650,102 @@ def shell_line_without_single_quotes(
             in_double_quote = True
         index += 1
     return "".join(masked), in_single_quote, in_double_quote, heredocs
+
+
+def shell_command_lines(
+        block: list[tuple[int, str]]) -> list[tuple[int, str]]:
+    """Mask shell heredoc bodies and multiline string literals in a code block."""
+    command_lines = []
+    heredoc_queue: list[tuple[str, bool]] = []
+    quote: str | None = None
+
+    for line_number, line in block:
+        if heredoc_queue:
+            delimiter, strip_tabs = heredoc_queue[0]
+            body_line = line.lstrip("\t") if strip_tabs else line
+            if body_line == delimiter:
+                heredoc_queue.pop(0)
+            command_lines.append((line_number, ""))
+            continue
+
+        masked = list(line)
+        heredocs = []
+        index = 0
+        while index < len(line):
+            char = line[index]
+            if quote:
+                quote_start = index
+                while index < len(line):
+                    if line[index] == "\\" and quote == '"':
+                        index += 2
+                    elif line[index] == quote:
+                        index += 1
+                        quote = None
+                        break
+                    else:
+                        index += 1
+                for position in range(quote_start, min(index, len(line))):
+                    masked[position] = " "
+                if quote:
+                    break
+                continue
+
+            if char == "\\":
+                index += 2
+                continue
+            if char == "#" and (index == 0 or line[index - 1].isspace()):
+                break
+            if line.startswith("<<", index) and not line.startswith("<<<", index):
+                delimiter_start = index + 2
+                strip_tabs = delimiter_start < len(line) and line[delimiter_start] == "-"
+                if strip_tabs:
+                    delimiter_start += 1
+                while delimiter_start < len(line) and line[delimiter_start] in " \t":
+                    delimiter_start += 1
+                if delimiter_start < len(line):
+                    delimiter_quote = line[delimiter_start]
+                    if delimiter_quote in {"'", '"'}:
+                        delimiter_end = line.find(delimiter_quote, delimiter_start + 1)
+                        if delimiter_end >= 0:
+                            delimiter = line[delimiter_start + 1:delimiter_end]
+                            heredocs.append((delimiter, strip_tabs))
+                            index = delimiter_end + 1
+                            continue
+                    else:
+                        delimiter_end = delimiter_start
+                        while (delimiter_end < len(line)
+                               and not line[delimiter_end].isspace()
+                               and line[delimiter_end] not in ";|&<>"):
+                            delimiter_end += 1
+                        if delimiter_end > delimiter_start:
+                            heredocs.append((
+                                line[delimiter_start:delimiter_end], strip_tabs))
+                            index = delimiter_end
+                            continue
+            if char in {"'", '"'}:
+                quote = char
+                index += 1
+                quote_start = index - 1
+                while index < len(line):
+                    if line[index] == "\\" and quote == '"':
+                        index += 2
+                    elif line[index] == quote:
+                        index += 1
+                        quote = None
+                        break
+                    else:
+                        index += 1
+                if quote:
+                    for position in range(quote_start, len(line)):
+                        masked[position] = " "
+                    break
+                continue
+            index += 1
+
+        command_lines.append((line_number, "".join(masked)))
+        heredoc_queue.extend(heredocs)
+
+    return command_lines
 
 
 def shell_env_reads(text: str) -> list[tuple[str, int]]:
@@ -1959,7 +2100,7 @@ def build(repo: Path, files: list[str], check_paths: bool = False) -> dict:
             script_cwd = Path(".")
             script_directory_stack: list[Path] = []
             explicit_script_directory_change = False
-            for lineno, line in block:
+            for lineno, line in shell_command_lines(block):
                 npm_cwd, npm_calls = npm_commands_in_line(
                     repo, npm_scripts, line, npm_cwd, workspace_names,
                     npm_directory_stack)
